@@ -6,7 +6,7 @@ For information on the original project read README_original.md
 
 The purpose of this biblepay project clone is to provide basic instructions for building a raspberry pi 3, OS Raspbian stretch (lite-headless). 
 I used this great [tutorial](https://www.reddit.com/r/BiblePay/comments/7qnbp4/bbp_miner_on_pi/) and other [information](https://bitcointalk.org/index.php?topic=2388064) as a base of information but I had to create some things to make it work.
-I also make the compiled binaries available in the "raspbian" branch (if you're not afraid to do so).
+I also make the compiled binaries available in src2 directory (if you're not afraid to do so!).
 
 ***
 
