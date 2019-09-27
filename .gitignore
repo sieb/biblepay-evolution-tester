@@ -124,8 +124,8 @@ src/qt/biblepay-qt.bash
 qa/pull-tester/tests-config.sh
 
 #development symlinks
-biblepay-cli
-biblepayd
+#biblepay-cli
+#biblepayd
 biblepay-qt
 make
 
