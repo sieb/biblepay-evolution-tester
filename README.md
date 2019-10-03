@@ -13,10 +13,10 @@ I also make the compiled binaries available in src2 directory (if you're not afr
 ## Install dependencies
 
 `$ sudo apt-get install curl build-essential libtool autotools-dev automake pkg-config python3 bsdmainutils cmake`
-
- * Clone repo:
-
- `$ git clone https://github.com/biblepay/biblepay-evolution`
+ 
+ * Download Latest Release here and untar/unzip
+ 
+ `https://github.com/biblepay/biblepay-evolution/releases/tag/1.4.4.8`
 
  Change for depends dir into biblepay-evolution:
 
