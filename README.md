@@ -14,9 +14,9 @@ I also make the compiled binaries available in src2 directory (if you're not afr
 
 `$ sudo apt-get install curl build-essential libtool autotools-dev automake pkg-config python3 bsdmainutils cmake`
 
- * Download Latest Release here and untar/unzip
+ * Clone the repository:
 
- `https://github.com/biblepay/biblepay-evolution/releases/tag/1.4.4.8`
+ `https://github.com/biblepay/biblepay-evolution`
 
  Change for depends dir into biblepay-evolution:
 
@@ -28,7 +28,7 @@ I also make the compiled binaries available in src2 directory (if you're not afr
 
   and too
 
- `./configure --prefix=`pwd`/depends/arm-linux-gnueabihf`
+ ``./configure --prefix=`pwd`/depends/arm-linux-gnueabihf``
 
 ## Building BiblePay Core
 
