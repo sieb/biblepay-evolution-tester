@@ -782,8 +782,6 @@ UniValue ListObjects(const std::string& strCachedSignal, const std::string& strT
 			bObj.push_back(Pair("fCachedFunding",  pGovObj->IsSetCachedFunding()));
 			bObj.push_back(Pair("fCachedDelete",  pGovObj->IsSetCachedDelete()));
 			bObj.push_back(Pair("fCachedEndorsed",  pGovObj->IsSetCachedEndorsed()));
-		
-
 			objResult.push_back(Pair(pGovObj->GetHash().ToString(), bObj));
 		}
     }
@@ -1328,7 +1326,7 @@ UniValue leaderboard(const JSONRPCRequest& request)
         throw std::runtime_error(
             "leaderboard\n"
             "Returns an object containing the campaign participants prominence levels per project, and global totals.\n"
-			"\nYou must specify leaderboard [all || nickname] [height || last || future]. The default is leaderboard false future."
+			"\nYou must specify leaderboard [all || nickname] [height || last || future]. The default is leaderboard all future."
             + HelpExampleCli("leaderboard", "")
             );
     }

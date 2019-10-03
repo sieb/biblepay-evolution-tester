@@ -201,7 +201,7 @@ public:
 		consensus.nBudgetPaymentsCycleBlocks = BLOCKS_PER_DAY * 30; // Monthly
 		consensus.nBudgetPaymentsWindowBlocks = 100;
 		//  RANDREWS:  This is removed in Evo - consensus.nBudgetProposalEstablishingTime = 60 * 60 * 24;  // One Day
-		consensus.nInstantSendConfirmationsRequired = 6;
+		consensus.nInstantSendConfirmationsRequired = 1;
 		consensus.nSuperblockStartBlock = 21710; // The first superblock
 		consensus.nSuperblockCycle = BLOCKS_PER_DAY * 30; // Monthly
 		consensus.nDCCSuperblockStartBlock = 33451; //F11000 CUTOVER HEIGHT + 11
@@ -337,10 +337,11 @@ public:
 				(63000, uint256S("0x1ef6f6e5d803cf04f84a4377365db6cefe82a775a9a596029db7d23fa3652f57"))
 				(105028, uint256S("0x2d38a145444c5e880209fe6a1ee1b09542f5438f50ca8736b20bafc5c552d79b"))
 				(119000, uint256S("0x527a086d639b315e4eb03cb52d394a809654d072387c5cb73401799cb5998f90"))
+				(145000, uint256S("0xe830a524fc6a71aa0c3171db1ef592893f84de65fdcda57ddff8b378dcbda12f"))
 		};
 
         chainTxData = ChainTxData{
-            1551671253, // * UNIX timestamp of last known number of transactions
+            1568525942, // * UNIX timestamp of last known number of transactions
             879614,     // * total number of transactions between genesis and that timestamp
                         //   (the tx=... number in the SetBestChain debug.log lines)
             0.01        // * estimated number of transactions per second after that timestamp
@@ -376,7 +377,7 @@ public:
 		consensus.nMasternodePaymentsStartBlock = 2001;
 		consensus.nMasternodePaymentsIncreaseBlock = 2001;
 		consensus.nMasternodePaymentsIncreasePeriod = BLOCKS_PER_DAY * 30;
-		consensus.nInstantSendConfirmationsRequired = 6;
+		consensus.nInstantSendConfirmationsRequired = 1;
 		consensus.nInstantSendKeepLock = 6;
 		consensus.nBudgetPaymentsStartBlock = 2002;
 		consensus.QTHeight = 31000;

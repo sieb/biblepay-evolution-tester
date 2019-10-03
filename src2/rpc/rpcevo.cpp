@@ -450,7 +450,8 @@ UniValue protx_register(const JSONRPCRequest& request)
 		// R Andrews - DefaultPortEnforcement - Verification before sending ProTx
         if (!Lookup(request.params[paramIdx].get_str().c_str(), ptx.addr, Params().GetDefaultPort(), false)) 
 		{
-            throw std::runtime_error(strprintf("invalid network address %s", request.params[paramIdx].get_str()));
+			if (fEnforceSanctuaryPort)
+				throw std::runtime_error(strprintf("invalid network address %s", request.params[paramIdx].get_str()));
         }
     }
 
@@ -600,8 +601,10 @@ UniValue protx_update_service(const JSONRPCRequest& request)
     ptx.nVersion = CProRegTx::CURRENT_VERSION;
     ptx.proTxHash = ParseHashV(request.params[1], "proTxHash");
 
-    if (!Lookup(request.params[2].get_str().c_str(), ptx.addr, Params().GetDefaultPort(), false)) {
-        throw std::runtime_error(strprintf("invalid network address %s", request.params[2].get_str()));
+    if (!Lookup(request.params[2].get_str().c_str(), ptx.addr, Params().GetDefaultPort(), false)) 
+	{
+		if (fEnforceSanctuaryPort)
+			throw std::runtime_error(strprintf("invalid network address %s", request.params[2].get_str()));
     }
 
     CBLSSecretKey keyOperator = ParseBLSSecretKey(request.params[3].get_str(), "operatorKey");
@@ -1227,6 +1230,58 @@ UniValue versionreport(const JSONRPCRequest& request)
 	return uVersionReport;
 }
 
+UniValue sins(const JSONRPCRequest& request)
+{
+	if (request.fHelp)
+		throw std::runtime_error("sins:  Lists the 39 mortal sins that could send a person to Hell (If they do not repent).");
+	UniValue myMortalSins(UniValue::VOBJ);
+	for (int i = 0; i < 39; i++)
+	{
+		std::string out_Description;
+		std::string sSin = GetSin(i, out_Description);
+		myMortalSins.push_back(Pair(sSin, out_Description));
+	}
+	return myMortalSins;
+}
+
+UniValue readverse(const JSONRPCRequest& request)
+{
+	if (request.params.size() != 2 && request.params.size() != 3 && request.params.size() != 4)
+			throw std::runtime_error("readverse:  Empowers the user to read a specific bible verse from a specific chatper.  You must specify Book and Chapter: IE 'readverse CO2 10'.  \nOptionally you may enter the Language (EN/CN) IE 'readverse CO2 10 CN'. \nOptionally you may enter the VERSE #, IE: 'readverse CO2 10 EN 2'.  To see a list of books: type getbooks.");
+
+	std::string sBook = request.params[0].get_str();
+	int iChapter = cdbl(request.params[1].get_str(),0);
+	int iVerse = 0;
+	msLanguage = "EN";
+	if (request.params.size() > 2)
+	{
+		msLanguage = request.params[2].get_str();
+	}
+	
+	if (request.params.size() > 3)
+		iVerse = cdbl(request.params[3].get_str(), 0);
+	UniValue results(UniValue::VOBJ);
+	results.push_back(Pair("Book", sBook));
+	results.push_back(Pair("Chapter", iChapter));
+	results.push_back(Pair("Language", msLanguage));
+	if (iVerse > 0) results.push_back(Pair("Verse", iVerse));
+	int iStart = 0;
+	int iEnd = 0;
+	GetBookStartEnd(sBook, iStart, iEnd);
+	for (int i = iVerse; i < BIBLE_VERSE_COUNT; i++)
+	{
+		std::string sVerse = GetVerseML(msLanguage, sBook, iChapter, i, iStart - 1, iEnd);
+		if (iVerse > 0 && i > iVerse)
+			break;
+		if (!sVerse.empty())
+		{
+			std::string sKey = sBook + " " + RoundToString(iChapter, 0) + ":" + RoundToString(i, 0);
+		    results.push_back(Pair(sKey, sVerse));
+		}
+	}
+	return results;
+}
+
 UniValue sponsorchild(const JSONRPCRequest& request)
 {
 	// Sponsor a CameroonOne Child
@@ -1379,9 +1434,9 @@ UniValue sendgscc(const JSONRPCRequest& request)
 		throw std::runtime_error(
 		"sendgscc"
 		"\nSends a generic smart contract campaign transmission and/or a donation to the foundation."
-		"\nYou must specify sendgscc campaign_name [foundation_donation_amount] [optional:diary_entry] : IE 'exec sendgscc healing 10 [\"prayed for Jane Doe who had broken ribs, this happened\"].");
+		"\nYou must specify sendgscc campaign_name [foundation_donation_amount] [optional:diary_entry] : IE sendgscc healing 10 [\"prayed for Jane Doe who had broken ribs, this happened\"].");
 	if (request.params.size() < 1 || request.params.size() > 3)
-		throw std::runtime_error("You must specify sendgscc campaign_name [foundation_donation_amount] [optional:diary_entry] : IE 'exec sendgscc healing 10 [\"prayed for Jane Doe who had broken ribs, this happened\"].");
+		throw std::runtime_error("You must specify sendgscc campaign_name [foundation_donation_amount] [optional:diary_entry] : IE sendgscc healing 10 [\"prayed for Jane Doe who had broken ribs, this happened\"].");
 	std::string sDiary;
 	std::string sCampaignName;
 	if (request.params.size() > 0)
@@ -1539,7 +1594,9 @@ static const CRPCCommand commands[] =
 	{ "evo",                "nonfinancialtxtojson",         &nonfinancialtxtojson,          false, {}  },
 	{ "evo",                "sponsorchild",                 &sponsorchild,                  false, {}  },
 	{ "evo",                "listchildren",                 &listchildren,                  false, {}  },
+	{ "evo",                "readverse",                    &readverse,                     false, {}  },
 	{ "evo",                "sendgscc",                     &sendgscc,                      false, {}  },
+	{ "sins",               "sins",                         &sins,                          false, {}  },
 	{ "evo",                "versionreport",                &versionreport,                 false, {}  },
 };
 

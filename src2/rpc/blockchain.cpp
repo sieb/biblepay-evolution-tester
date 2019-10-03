@@ -57,6 +57,7 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, UniValue& out, bool fInclud
 UniValue protx_register(const JSONRPCRequest& request);
 UniValue protx(const JSONRPCRequest& request);
 UniValue _bls(const JSONRPCRequest& request);
+UniValue gobject_vote_many(const JSONRPCRequest& request);
 
 double GetDifficulty(const CBlockIndex* blockindex)
 {
@@ -1828,13 +1829,6 @@ UniValue exec(const JSONRPCRequest& request)
 		results.push_back(Pair("Current_version", sCurrentVersion));
 		if (!sNarr.empty()) results.push_back(Pair("Alert", sNarr));
 	}
-	else if (sItem == "sins")
-	{
-		std::string sEntry = "";
-		int iSpecificEntry = 0;
-		UniValue aDataList = GetDataList("SIN", 7, iSpecificEntry, "", sEntry);
-		return aDataList;
-	}
 	else if (sItem == "reassesschains")
 	{
 		int iWorkDone = ReassessAllChains();
@@ -1843,37 +1837,6 @@ UniValue exec(const JSONRPCRequest& request)
 	else if (sItem == "autounlockpasswordlength")
 	{
 		results.push_back(Pair("Length", (double)msEncryptedString.size()));
-	}
-	else if (sItem == "readverse")
-	{
-		if (request.params.size() != 3 && request.params.size() != 4 && request.params.size() != 5)
-			throw std::runtime_error("You must specify Book and Chapter: IE 'readverse CO2 10'.  \nOptionally you may enter the Language (EN/CN) IE 'readverse CO2 10 CN'. \nOptionally you may enter the VERSE #, IE: 'readverse CO2 10 EN 2'.  To see a list of books: run getbooks.");
-		std::string sBook = request.params[1].get_str();
-		int iChapter = cdbl(request.params[2].get_str(),0);
-		int iVerse = 0;
-		if (request.params.size() > 3)
-		{
-			msLanguage = request.params[3].get_str();
-		}
-		if (request.params.size() > 4)
-			iVerse = cdbl(request.params[4].get_str(), 0);
-		results.push_back(Pair("Book", sBook));
-		results.push_back(Pair("Chapter", iChapter));
-		results.push_back(Pair("Language", msLanguage));
-		if (iVerse > 0) results.push_back(Pair("Verse", iVerse));
-		int iStart = 0;
-		int iEnd = 0;
-		GetBookStartEnd(sBook, iStart, iEnd);
-		for (int i = iVerse; i < BIBLE_VERSE_COUNT; i++)
-		{
-			std::string sVerse = GetVerseML(msLanguage, sBook, iChapter, i, iStart - 1, iEnd);
-			if (iVerse > 0 && i > iVerse) break;
-			if (!sVerse.empty())
-			{
-				std::string sKey = sBook + " " + RoundToString(iChapter, 0) + ":" + RoundToString(i, 0);
-			    results.push_back(Pair(sKey, sVerse));
-			}
-		}
 	}
 	else if (sItem == "ipfstest1")
 	{
@@ -1946,6 +1909,94 @@ UniValue exec(const JSONRPCRequest& request)
 		results.push_back(Pair("vote_result", bRes));
 		results.push_back(Pair("vote_error", sError));
 	}
+	else if (sItem == "disablenetworkmonitor")
+	{
+		mvNetworkMonitor.clear();
+		results.push_back(Pair("disabled", 1));
+		fNetworkMonitor = false;
+	}
+	else if (sItem == "enablenetworkmonitor")
+	{
+		fNetworkMonitor = true;
+		results.push_back(Pair("enabled", fNetworkMonitor));
+	}
+	else if (sItem == "networkmonitor")
+	{
+		results.push_back(Pair("NetworkMonitor", fNetworkMonitor));
+
+	    for (auto ii : mvNetworkMonitor)
+		{
+			double nBytes = mvNetworkMonitor[ii.first];
+			std::string sMessageType = ii.first;
+	        results.push_back(Pair("Message Type " + sMessageType, nBytes));
+	    }
+	}
+	else if (sItem == "votecleanuputil")
+	{
+
+		UniValue a = governance.VoteCleanup1();
+		return a;
+
+	}
+	else if (sItem == "gobjectcleanuputil")
+	{
+		std::map<std::string, double> mvOutpointCount;
+		mvOutpointCount.clear();
+		// Cleans up old gobjects older than 1 day with 0 votes that have not been deleted
+		// This is helpful to save bandwidth while we are waiting for the supermajority to upgrade
+	    LOCK2(cs_main, governance.cs);
+		std::vector<const CGovernanceObject*> objs = governance.GetAllNewerThan(0);
+		int iCounted = 0;
+		int iTotal = 0;
+		for (const CGovernanceObject* pGovObj : objs) 
+		{
+			CGovernanceObject* myGov = governance.FindGovernanceObject(pGovObj->GetHash());
+			int64_t nAge = GetAdjustedTime() - myGov->GetCreationTime();
+			int iYes = myGov->GetYesCount(VOTE_SIGNAL_FUNDING);
+			int iDeleted = myGov->GetYesCount(VOTE_SIGNAL_DELETE);
+			if (iYes == 0 && nAge > (60 * 60 * 24 * 1) && iDeleted == 0 && pGovObj->GetObjectType() == GOVERNANCE_OBJECT_TRIGGER)
+			{
+				JSONRPCRequest myVote;
+				myVote.params.setArray();
+				myVote.params.push_back("vote-many");
+				myVote.params.push_back(myGov->GetHash().GetHex());
+				myVote.params.push_back("delete");
+				myVote.params.push_back("yes");
+				UniValue myResult = gobject_vote_many(myVote);
+				if (iCounted == 0)
+				{
+					results.push_back(Pair("Response", myResult));
+				}
+
+				results.push_back(Pair(pGovObj->GetHash().GetHex(), nAge));
+				iCounted++;
+			}
+			else
+			{
+				iTotal++;
+				/*
+				results.push_back(Pair("SAV: " + pGovObj->GetHash().GetHex(), nAge));
+				results.push_back(Pair("DLV", iDeleted));
+				results.push_back(Pair("YV", iYes));
+				*/
+			}
+			// Tally signing masternodes for summary report
+			const COutPoint& masternodeOutpoint = myGov->GetMasternodeOutpoint();
+			if (masternodeOutpoint != COutPoint()) 
+			{
+				mvOutpointCount[masternodeOutpoint.ToStringShort()]++;
+			}
+
+		}
+		results.push_back(Pair("Total Votes", iCounted));
+		results.push_back(Pair("Total Counted", iTotal));
+	    for (auto ii : mvOutpointCount)
+		{
+			double nCount = mvOutpointCount[ii.first];
+			std::string sOutpoint = ii.first;
+	        results.push_back(Pair("SANC " + sOutpoint, nCount));
+	    }
+    }
 	else if (sItem == "hexblocktocoinbase")
 	{
 		// This call is used by pools (pool.biblepay.org and purepool) to verify a serialized solution
@@ -2316,6 +2367,78 @@ UniValue exec(const JSONRPCRequest& request)
 			results.push_back(Pair("TXID", sTxId));
 		}
 	}
+	else if (sItem == "paycameroon")
+	{
+		if (request.params.size() != 4)
+			throw std::runtime_error("You must specify childid amount_in_USD send_mode.  IE: exec paycameroon childID 40 [test/authorize].");
+		std::string sError;
+	   	std::string sCPK = DefaultRecAddress("Christian-Public-Key");
+		std::string sChildID = request.params[1].get_str();
+		double nAmountUSD = cdbl(request.params[2].get_str(), 2);
+		std::string sSendMode = request.params[3].get_str();
+		double dPriorPrice = 0;
+		double dPriorPhase = 0;
+		double dCurPhase = GetQTPhase(false, -1, chainActive.Tip()->nHeight, dPriorPrice, dPriorPhase);
+		if (dPriorPrice < .00001)
+		{
+			sError = "BBP Price too low to use feature.  Price must be above .00001USD/BBP ";
+			dPriorPrice = .00001;
+		}
+
+		if (nAmountUSD < 1)
+		{
+			sError += "You must enter a USD value greater than $1.00 to use this feature. ";
+			nAmountUSD = .01;
+		}
+
+		bool fGood = VerifyChild(sChildID);
+		if (!fGood || sChildID.empty())
+			sError += "Invalid Child ID. (Not sponsored). ";
+
+		if (sSendMode != "authorize")
+		{
+			sError += "Running in dry run mode. ";
+		}
+
+		double nAmount = cdbl(RoundToString(nAmountUSD / dPriorPrice, 2), 2);
+
+		results.push_back(Pair("BBP/USD_Price", dPriorPrice));
+
+		std::string sXML = "<cpk>" + sCPK + "</cpk><childid> " + sChildID + "</childid><amount_usd>" + RoundToString(nAmountUSD, 2) 
+			+ "</amount_usd><amount>" + RoundToString(nAmount, 2) + "</amount>";
+		std::string sDest = "BHRiFZYUpHj2r3gxw7pHyvByTUk1dGb8vz";
+		CBitcoinAddress baDest(sDest);
+
+		bool fSubtractFee = false;
+		bool fInstantSend = false;
+		CWalletTx wtx;
+		bool fSent = false;
+		if (sError.empty() && sSendMode == "authorize")
+		{
+			fSent = RPCSendMoney(sError, baDest.Get(), nAmount * COIN, fSubtractFee, wtx, fInstantSend, sXML);
+		}
+
+		if (!fSent)
+		{
+			results.push_back(Pair("Error", sError));
+			results.push_back(Pair("BBPAmount", nAmount));
+			results.push_back(Pair("USDAmount", nAmountUSD));
+		}
+		else
+		{
+			results.push_back(Pair("txid", wtx.GetHash().GetHex()));
+			results.push_back(Pair("childid", sChildID));
+			results.push_back(Pair("BBPAmount", nAmount));
+			results.push_back(Pair("USDAmount", nAmountUSD));
+		}
+	}
+	else if (sItem == "gschealth")
+	{
+		std::string sQH = CheckLastQuorumPopularHash();
+		std::string sGSCH = CheckGSCHealth();
+		results.push_back(Pair("QH", sQH));
+		results.push_back(Pair("GSCH", sGSCH));
+	}
 	else if (sItem == "health")
 	{
 		// This command pulls the best-superblock (the one with the highest votes for the next height)
@@ -2429,7 +2552,18 @@ UniValue exec(const JSONRPCRequest& request)
 	}
 	else if (sItem == "sentgsc")
 	{
-		UniValue s = SentGSCCReport(0);
+		if (request.params.size() > 3)
+			throw std::runtime_error("sentgsc: Reports on the GSC transmissions and ABN transmissions over the last 7 days.  You may optionally specify the CPK and the height: sentgsc cpk height.");
+		std::string sMyCPK;
+		if (request.params.size() > 1)
+			sMyCPK = request.params[1].get_str();
+		if (sMyCPK.empty())
+			sMyCPK = DefaultRecAddress("Christian-Public-Key");
+		double nHeight = 0;
+		if (request.params.size() > 2)
+			nHeight = cdbl(request.params[2].get_str(), 0);
+
+		UniValue s = SentGSCCReport(nHeight, sMyCPK);
 		return s;
 	}
 	else if (sItem == "upgradesanc")
@@ -2457,6 +2591,7 @@ UniValue exec(const JSONRPCRequest& request)
 		// Step 1: Fund the protx fee
 		// 1a. Create the new deterministic-sanctuary reward address
 		std::string sPayAddress = DefaultRecAddress(sSancName + "-d"); //d means deterministic
+
 		CBitcoinAddress baPayAddress(sPayAddress);
 		std::string sVotingAddress = DefaultRecAddress(sSancName + "-v"); //v means voting
 		CBitcoinAddress baVotingAddress(sVotingAddress);
@@ -2597,6 +2732,13 @@ UniValue exec(const JSONRPCRequest& request)
 	}
 	else if (sItem == "roi")
 	{
+		if (request.params.size() != 1 && request.params.size() != 2)
+			throw std::runtime_error("roi:  Shows the estimated return on investment for a given donation in the POG campage.  You may optionally specify a specific tithe amount.  IE: roi [bbpamount].");
+		double dSpecificAmount = 0;
+
+		if (request.params.size() > 1)
+			dSpecificAmount = cdbl(request.params[1].get_str(), 2);
+	
 		const Consensus::Params& consensusParams = Params().GetConsensus();
 		int iNextSuperblock = 0;
 		int iLastSuperblock = GetLastGSCSuperblockHeight(chainActive.Tip()->nHeight, iNextSuperblock);
@@ -2627,7 +2769,16 @@ UniValue exec(const JSONRPCRequest& request)
 		double dPPP = dTotalPaid / nTotalPoints;
 		results.push_back(Pair("Payment Per Point", dPPP));
 		CAmount nTotalReq;
-		double dCoinAge = pwalletMain->GetAntiBotNetWalletWeight(0, nTotalReq);
+		// Honor default coin age percentage
+		double nDefaultCoinAgePercentage = GetSporkDouble("pogdefaultcoinagepercentage", .10);
+		double nCoinAgePercentage = UserSetting("pog_coinagepercentage", nDefaultCoinAgePercentage);
+		
+		double dCoinAgeIn = pwalletMain->GetAntiBotNetWalletWeight(0, nTotalReq);
+		double dTargetAge = dCoinAgeIn * nCoinAgePercentage;
+		double dCoinAge = pwalletMain->GetAntiBotNetWalletWeight(dTargetAge, nTotalReq);
+		
+		results.push_back(Pair("My Coin Age Percentage", nCoinAgePercentage));
+		
 		results.push_back(Pair("My Current Coin Age", dCoinAge));
 		results.push_back(Pair("My free balance", nTotalReq / COIN));
 		CBlockIndex* bindex = FindBlockByHeight(iLastSuperblock - 1);
@@ -2637,7 +2788,16 @@ UniValue exec(const JSONRPCRequest& request)
 		results.push_back(Pair("Sanctuary Reward @" + RoundToString(iLastSuperblock - 1, 2), nSanc / COIN));
 		double nSancROI = ((double)(nSanc/COIN) / SANCTUARY_COLLATERAL) * 100 * 365;
 		results.push_back(Pair("Sanctuary ROI Annualized %", nSancROI));
-		for (double nTitheAmount = 2; nTitheAmount < 50000; nTitheAmount += 1000)
+		double nLowAmount = 2;
+		double nHighAmount = 50000;
+		double nStep = 1000;
+		if (dSpecificAmount > 0)
+		{
+			nLowAmount = dSpecificAmount;
+			nHighAmount = dSpecificAmount + 1;
+			nStep = 1;
+		}
+		for (double nTitheAmount = nLowAmount; nTitheAmount < nHighAmount; nTitheAmount += nStep)
 		{
 			double nPoints = cbrt(nTitheAmount) * dCoinAge;
 			if (nTitheAmount > 10000)
@@ -2688,6 +2848,43 @@ UniValue exec(const JSONRPCRequest& request)
 	else if (sItem == "tuhi")
 	{
 		UpdateHealthInformation();
+	}
+	else if (sItem == "cameroon_payments")
+	{
+		if (request.params.size() !=2)
+			throw std::runtime_error("You must specify cameroon_payments type [XML/Auto].");
+		std::string sType = request.params[1].get_str();
+		std::string sDest = "BHRiFZYUpHj2r3gxw7pHyvByTUk1dGb8vz";
+		std::string CP = SearchChain(BLOCKS_PER_DAY * 31, sDest);
+		int payment_id = 0;
+		if (sType == "XML")
+		{
+			results.push_back(Pair("payments", CP));
+		}
+		else
+		{
+			std::vector<std::string> vRows = Split(CP.c_str(), "<row>");
+			for (int i = 0; i < vRows.size(); i++)
+			{
+				std::string sCPK = ExtractXML(vRows[i], "<cpk>", "</cpk>");
+				std::string sChildID = ExtractXML(vRows[i], "<childid>", "</childid>");
+				std::string sAmount = ExtractXML(vRows[i], "<amount>", "</amount>");
+				std::string sUSD = ExtractXML(vRows[i], "<amount_usd>", "</amount_usd>");
+				std::string sBlock = ExtractXML(vRows[i], "<block>", "</block>");
+				std::string sTXID = ExtractXML(vRows[i], "<txid>", "</txid>");
+				if (!sChildID.empty())
+				{
+					payment_id++;
+					results.push_back(Pair("Payment #", payment_id));
+					results.push_back(Pair("CPK", sCPK));
+					results.push_back(Pair("childid", sChildID));
+					results.push_back(Pair("Amount", sAmount));
+					results.push_back(Pair("Amount_USD", sUSD));
+					results.push_back(Pair("Block #", sBlock));
+					results.push_back(Pair("TXID", sTXID));
+				}
+			}
+		}
 	}
 	else if (sItem == "blscommand")
 	{
