@@ -46,20 +46,12 @@ After many hours (use screen to move from terminal in the meantime) and only the
 
 Wait for the entire blockchain to load (no larger than 1.4Gb) and add this file (biblepay.conf) to the hidden directory that was created .biblepaycore or .biblepayevolution (if there are both added in both)
 
-## Mining and poll
+## Mining and pool
 
-Create account in http://pool.biblepay.org/ and create a [worker set to funded, 1](https://whitewalr.us/2019/pobh-funded-mining.html).
+https://github.com/sieb/biblepay-evolution/releases/
 
-Create `biblepay.conf` 
+https://miningpoolstats.stream/biblepay
 
-```
-addnode=node.biblepay-explorer.org
-gen=1
-genproclimit=4
-poolport=80
-pool=https://pool.biblepay.org
-workerid=yourworkername
-workeridfunded=yourworkername
 ```
 To know the commands:
 
@@ -67,4 +59,4 @@ To know the commands:
 
 ***
 If you like and want to send me some bbp feel free to. 
-My address is `BNPA5qQ6729vHtZsiUtYtpAJ65y5MgxpJh`
+My address is `BSpLn6ciMxmk7dULFJneUjrWJvRnfHvx1g`
