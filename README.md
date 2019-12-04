@@ -52,7 +52,7 @@ https://github.com/sieb/biblepay-evolution/releases/
 
 https://miningpoolstats.stream/biblepay
 
-```
+
 To know the commands:
 
 `./biblepay-cli help`
