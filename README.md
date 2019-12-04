@@ -54,7 +54,7 @@ https://github.com/sieb/biblepay-evolution/releases/
 Pools
 https://miningpoolstats.stream/biblepay
 
-#### For more information on the original project read README_original.md (maybe outdate here)
+#### For more information on the original project read README_original.md (maybe outdated here)
 
 ***
 If you like and want to send me some bbp feel free to. 
