@@ -48,15 +48,16 @@ Wait for the entire blockchain to load (no larger than 1.4Gb) and add this file 
 
 ## Mining and pool
 
+My releases
 https://github.com/sieb/biblepay-evolution/releases/
 
+Pools
 https://miningpoolstats.stream/biblepay
 
-
-To know the commands:
-
-`./biblepay-cli help`
+#### For more information on the original project read README_original.md (maybe outdate here)
 
 ***
 If you like and want to send me some bbp feel free to. 
 My address is `BSpLn6ciMxmk7dULFJneUjrWJvRnfHvx1g`
+
+If you ever need help with this open an issue or contact me at: `sieb at gmx dot us` i will be very happy to help!
